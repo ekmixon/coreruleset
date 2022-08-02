@@ -19,9 +19,9 @@ def check_against_rule_file(rule_file_path, id_regex, rule_id, computed_regex):
 				rx_line = previous_line
 				if '@rx' not in rx_line:
 					rx_line = line
-					if '@rx' not in rx_line:
-						print(f'Unable to find regex for rule {rule_id}')
-						sys.exit(1)
+				if '@rx' not in rx_line:
+					print(f'Unable to find regex for rule {rule_id}')
+					sys.exit(1)
 				other, current_regex = rx_line.split('@rx')
 				delimiter = other.strip()[-1]
 				current_regex = current_regex.strip()
@@ -31,7 +31,7 @@ def check_against_rule_file(rule_file_path, id_regex, rule_id, computed_regex):
 						current_regex = current_regex[:index]
 						break
 					last = character
-				
+
 				if current_regex == computed_regex:
 					print(f'Regex of {rule_id} has not changed')
 				else:
@@ -92,13 +92,13 @@ if __name__ == '__main__':
 	if len(sys.argv) > 1:
 		rule_id_regex = re.compile(r'\d{6}')
 		for file_name in sys.argv[1:]:
-			if rule_id_regex.fullmatch(file_name) is not None:
-				exit_code = check_file(f'regexp-{file_name}.data')
-				if exit_code > 0:
-					sys.exit(exit_code)
-			else:
-				exit_code = check_file(file_name)
-				if exit_code > 0:
-					sys.exit(exit_code)
+			exit_code = (
+				check_file(f'regexp-{file_name}.data')
+				if rule_id_regex.fullmatch(file_name) is not None
+				else check_file(file_name)
+			)
+
+			if exit_code > 0:
+				sys.exit(exit_code)
 	else:
 		run()

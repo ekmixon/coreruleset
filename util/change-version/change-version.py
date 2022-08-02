@@ -18,22 +18,23 @@ class FileTransform(object):
         for d in self.data:
             # id the item has 'actions' then we can check the 'ver' key
             if "actions" in d:
-                aidx = 0
-                while aidx < len(d['actions']):
+                for aidx in range(len(d['actions'])):
                     a = d['actions'][aidx]
                     # if we found one, replace the value
                     if a['act_name'] == "ver":
                         a['act_arg'] = version
-                    aidx += 1
             else:
                 # replace SecComponentSignature by same version string
                 if d['type'].lower() == "seccomponentsignature":
                     d['arguments'][0]['argument'] = version
 
                 # repace the versions in comments if cversion exists
-                if cversion is not None:
-                    if d['type'].lower() == "comment" and self.re_cverpatt.search(d['argument']):
-                        d['argument'] = re.sub(self.cverpatt, "ver.%s" % (cversion), d['argument'])
+                if (
+                    cversion is not None
+                    and d['type'].lower() == "comment"
+                    and self.re_cverpatt.search(d['argument'])
+                ):
+                    d['argument'] = re.sub(self.cverpatt, f"ver.{cversion}", d['argument'])
 
 class FileHandler(object):
     def __init__(self, **kwargs):
@@ -46,7 +47,7 @@ class FileHandler(object):
 
         # iterate throught the list of files
         for f in glob.glob(self.input):
-            print(f"Working with file: %s" % (f))
+            print(f"Working with file: {f}")
             # read the file content
             try:
                 with open(f) as file:
@@ -86,7 +87,7 @@ class FileHandler(object):
 
 if len(sys.argv) < 4:
     print("Argument missing!")
-    print("Use: %s rule.conf /path/to/output/directory version" % sys.argv[0])
+    print(f"Use: {sys.argv[0]} rule.conf /path/to/output/directory version")
     print("     %s \"/path/to/rules/*.conf\" /path/to/output/directory version [comment_version]" % sys.argv[0])
     print("Example:")
     print("     mkdir ../../rulestmp")

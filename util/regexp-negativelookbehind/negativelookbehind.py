@@ -26,29 +26,29 @@ def removeDuplicateChars(s):
   return "".join([c for i,c in enumerate(s) if c not in s[:i]])
 
 def removeChars(s, charsToRemove):
-  return "".join([c for i,c in enumerate(s) if c not in charsToRemove])
+    return "".join([c for c in s if c not in charsToRemove])
 
 # Split into arrays of strings. Each string is either a single char, or a char class.
 negativePrefixesSplit = []
 for np in negativePrefixes:
-  npSplit = []
-  curCc = ""
-  inCc = False
-  for c in np:
-    if c == "[":
-      inCc = True
-    elif c == "]":
-      npSplit.append(removeDuplicateChars(curCc))
-      curCc = ""
-      inCc = False
-    else:
-      if inCc:  
-        if c in "-\\":
-          raise "Only really simply char classes are currently supported. No ranges or escapes, sorry."
-        curCc += c
-      else:
-        npSplit.append(c)
-  negativePrefixesSplit.append(npSplit)
+    npSplit = []
+    curCc = ""
+    inCc = False
+    for c in np:
+        if c == "[":
+            inCc = True
+        elif c == "]":
+          npSplit.append(removeDuplicateChars(curCc))
+          curCc = ""
+          inCc = False
+        elif inCc:  
+            if c in "-\\":
+                raise "Only really simply char classes are currently supported. No ranges or escapes, sorry."
+            else:
+                curCc += c
+        else:
+            npSplit.append(c)
+    negativePrefixesSplit.append(npSplit)
 
 allexprs = []
 
@@ -57,86 +57,84 @@ class Expr():
 
 suffixLength = 0
 while True:
-  suffixes = []
-  for np in negativePrefixesSplit:
-    if suffixLength < len(np):
-      suffixes.append(np[len(np)-suffixLength-1:])
+    suffixes = [
+        np[len(np) - suffixLength - 1 :]
+        for np in negativePrefixesSplit
+        if suffixLength < len(np)
+    ]
 
-  if len(suffixes) == 0:
-    break
-
-  exprs = []
-  for suffix in suffixes:
-    curChar = suffix[0]
-    remainder = suffix[1:]
-    expr = Expr()
-    expr.curChar = curChar
-    expr.remainder = remainder
-    exprs.append(expr)
-
-  # Is the remainder a subset of any other suffixes remainders?
-  for i in range(len(exprs)):
-    e1 = exprs[i]
-    for j in range(len(exprs)):
-      e2 = exprs[j]
-      isSubset = True
-      for k in range(len(e1.remainder)):
-        if not set(e1.remainder[k]).issubset(set(e2.remainder[k])):
-          isSubset = False
-          break
-      if isSubset:
-        if e1.curChar == e2.curChar:
-          e1.remainder = e2.remainder
-          continue
-
-        e1.curChar += e2.curChar
-        e1.curChar = removeDuplicateChars(e1.curChar)
-        for k in range(len(e1.remainder)):
-          if len(set(e2.remainder[k]) - set(e1.remainder[k])) > 0:
-            charsInCommon = "".join(set(e2.remainder[k]) & set(e1.remainder[k]))
-            e2.remainder[k] = removeChars(e2.remainder[k], charsInCommon)
-
-  # Remove duplicate expressions
-  exprsFiltered = []
-  for i in range(len(exprs)):
-    e1 = exprs[i]
-    alreadyExists = False
-    for j in range(len(exprs)):
-      if i == j:
+    if not suffixes:
         break
 
-      e2 = exprs[j]
+    exprs = []
+    for suffix in suffixes:
+      curChar = suffix[0]
+      remainder = suffix[1:]
+      expr = Expr()
+      expr.curChar = curChar
+      expr.remainder = remainder
+      exprs.append(expr)
 
-      sameC = set(e1.curChar) == set(e2.curChar)
-      sameR = True
-      for k in range(len(e1.remainder)):
-        if set(e1.remainder[k]) != set(e2.remainder[k]):
-          sameR = False
-          break
-      if sameC and sameR:
-        alreadyExists = True
-        break
+      # Is the remainder a subset of any other suffixes remainders?
+    for expr_ in exprs:
+        e1 = expr_
+        for expr__ in exprs:
+            e2 = expr__
+            isSubset = all(
+                set(e1.remainder[k]).issubset(set(e2.remainder[k]))
+                for k in range(len(e1.remainder))
+            )
 
-    if not alreadyExists:
-      exprsFiltered.append(e1)
+            if isSubset:
+              if e1.curChar == e2.curChar:
+                e1.remainder = e2.remainder
+                continue
 
-  allexprs.extend(exprsFiltered)
+              e1.curChar += e2.curChar
+              e1.curChar = removeDuplicateChars(e1.curChar)
+              for k in range(len(e1.remainder)):
+                if len(set(e2.remainder[k]) - set(e1.remainder[k])) > 0:
+                  charsInCommon = "".join(set(e2.remainder[k]) & set(e1.remainder[k]))
+                  e2.remainder[k] = removeChars(e2.remainder[k], charsInCommon)
 
-  suffixLength += 1
-  continue
+    # Remove duplicate expressions
+    exprsFiltered = []
+    for i in range(len(exprs)):
+        e1 = exprs[i]
+        alreadyExists = False
+        for j in range(len(exprs)):
+            if i == j:
+              break
+
+            e2 = exprs[j]
+
+            sameC = set(e1.curChar) == set(e2.curChar)
+            sameR = all(
+                set(e1.remainder[k]) == set(e2.remainder[k])
+                for k in range(len(e1.remainder))
+            )
+
+            if sameC and sameR:
+              alreadyExists = True
+              break
+
+        if not alreadyExists:
+          exprsFiltered.append(e1)
+
+    allexprs.extend(exprsFiltered)
+
+    suffixLength += 1
+    continue
 
 out = "(?:\n"
 for i in range(len(allexprs)):
-  e = allexprs[i]
-  out += ("(?:^|[^" + e.curChar + "])")
-  for c in e.remainder:
-    if len(c) > 1:
-      out += "[" + c + "]"
-    else:
-      out += c
-  if i != len(allexprs)-1:
-    out += "|"
-  out += "\n"
+    e = allexprs[i]
+    out += f"(?:^|[^{e.curChar}])"
+    for c in e.remainder:
+        out += f"[{c}]" if len(c) > 1 else c
+    if i != len(allexprs)-1:
+      out += "|"
+    out += "\n"
 out += ")"
 
 print("Human readable:")
